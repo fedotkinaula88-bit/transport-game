@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Перевозчик</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #08090d;
+      --surface: #111318;
+      --border: #1e2130;
+      --purple: #7c3aed;
+      --purple-glow: rgba(124,58,237,0.35);
+      --amber: #f59e0b;
+      --green: #22c55e;
+      --red: #ef4444;
+      --text: #f1f1f3;
+      --muted: #6b7280;
+      --font-display: 'Russo One', sans-serif;
+      --font-body: 'Inter', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      background-image:
+        radial-gradient(rgba(124,58,237,0.10) 1px, transparent 1px);
+      background-size: 14px 14px;
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 20px 16px 40px;
+      position: relative;
+    }
+
+    /* ── VHS-сканлайны ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 999;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.025) 0px,
+        rgba(255,255,255,0.025) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+      opacity: .5;
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 998;
+      background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%);
+    }
+
+    .screen {
+      width: 100%;
+      max-width: 480px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── скрытые блоки ── */
+    .hidden { display: none !important; }
+
+    /* ── лого ── */
+    .logo {
+      font-family: var(--font-display);
+      font-size: 40px;
+      letter-spacing: 2px;
+      transform: skewX(-6deg);
+      background: linear-gradient(135deg, #fff 20%, var(--amber) 55%, var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-align: center;
+      margin-bottom: 6px;
+      text-shadow: 0 0 30px var(--purple-glow);
+      filter: drop-shadow(2px 2px 0 rgba(0,0,0,.6));
+    }
+    .tagline {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+
+    /* ── карточка ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 24px;
+      margin-bottom: 16px;
+    }
+
+    /* ── input ── */
+    label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 16px 18px;
+      background: #0d0f14;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-size: 17px;
+      font-family: var(--font-body);
+      outline: none;
+      transition: border-color .2s;
+      margin-bottom: 28px;
+    }
+    input[type="text"]:focus { border-color: var(--purple); }
+
+    /* ── машинки ── */
+    .cars-label {
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .cars {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+    .car {
+      font-size: 36px;
+      padding: 16px;
+      background: #0d0f14;
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all .2s;
+      line-height: 1;
+    }
+    .car:hover { transform: scale(1.08); border-color: #3d3d5c; }
+    .car.selected {
+      border-color: var(--purple);
+      box-shadow: 0 0 24px var(--purple-glow);
+      background: rgba(124,58,237,0.08);
+    }
+
+    /* ── кнопки ── */
+    .btn {
+      width: 100%;
+      padding: 18px;
+      font-size: 16px;
+      font-weight: 700;
+      font-family: var(--font-display);
+      letter-spacing: 1.5px;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-primary {
+      background: var(--purple);
+      color: white;
+      box-shadow: 0 0 30px var(--purple-glow);
+    }
+    .btn-primary:hover { background: #6d28d9; transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: .4; cursor: default; transform: none; }
+
+    /* ── ожидание ── */
+    .player-header {
+      font-family: var(--font-display);
+      font-size: 28px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .computer {
+      background: #0a0c10;
+      border: 1px solid #1a2040;
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+    }
+    .computer-title {
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #3d5080;
+      margin-bottom: 16px;
+    }
+    .waiting-dots::after {
+      content: '';
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+    @keyframes dots {
+      0%,20% { content: ''; }
+      40% { content: '.'; }
+      60% { content: '..'; }
+      80%,100% { content: '...'; }
+    }
+    .pulse-ring {
+      width: 60px; height: 60px;
+      border: 2px solid var(--purple);
+      border-radius: 50%;
+      margin: 0 auto 20px;
+      animation: pulse-ring 2s ease-out infinite;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(.8); opacity: 1; }
+      100% { transform: scale(1.6); opacity: 0; }
+    }
+    #waitingText {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* ── топливо ── */
+    .fuel-section { margin-top: 24px; }
+    .fuel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .fuel-label {
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .fuel-value {
+      font-family: var(--font-display);
+      font-size: 22px;
+      color: var(--amber);
+    }
+    .fuel-bar {
+      width: 100%;
+      height: 10px;
+      background: #1a1a2e;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .fuel-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--purple), var(--amber));
+      border-radius: 10px;
+      transition: width .6s ease;
+    }
+
+    /* ── пассажир ── */
+    .client-portrait-wrap {
+      width: 168px;
+      height: 168px;
+      margin: 0 auto 16px;
+      border-radius: 20px;
+      overflow: hidden;
+      position: relative;
+      border: 3px solid var(--purple);
+      box-shadow: 0 0 0 3px rgba(0,0,0,.4), 0 0 30px var(--purple-glow);
+      animation: float 3s ease-in-out infinite;
+    }
+    .client-portrait {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+    .client-emoji-fallback {
+      font-size: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      background: #0d0f14;
+    }
+    @keyframes float {
+      0%,100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    .client-name {
+      font-family: var(--font-display);
+      font-size: 32px;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .client-title {
+      text-align: center;
+      color: var(--purple);
+      font-size: 13px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .client-desc {
+      color: var(--muted);
+      text-align: center;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    .client-stats {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .stat-row {
+      background: #0a0c10;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 14px;
+      color: #c0c0d0;
+    }
+
+    /* ── вопрос ── */
+    .stage-badge {
+      display: inline-block;
+      background: rgba(245,158,11,0.14);
+      border: 1px solid rgba(245,158,11,0.4);
+      color: var(--amber);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 20px;
+      margin-bottom: 8px;
+      margin-right: 6px;
+    }
+    .trap-badge {
+      display: inline-block;
+      background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: var(--red);
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      border-radius: 20px;
+      margin-bottom: 12px;
+    }
+    .trap-subtitle {
+      font-family: var(--font-display);
+      font-size: 20px;
+      margin-bottom: 20px;
+      line-height: 1.3;
+    }
+    .question-bubble {
+      position: relative;
+      background: #f1f1f3;
+      color: #111318;
+      border: 3px solid #111318;
+      border-radius: 22px 22px 22px 4px;
+      padding: 18px 20px;
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 30px;
+      font-weight: 600;
+      box-shadow: 4px 4px 0 rgba(0,0,0,.35);
+    }
+    .question-bubble::after {
+      content: '';
+      position: absolute;
+      left: 24px;
+      bottom: -16px;
+      width: 0; height: 0;
+      border: 10px solid transparent;
+      border-top-color: #111318;
+      border-bottom: 0;
+    }
+    .question-bubble::before {
+      content: '';
+      position: absolute;
+      left: 27px;
+      bottom: -11px;
+      width: 0; height: 0;
+      border: 8px solid transparent;
+      border-top-color: #f1f1f3;
+      border-bottom: 0;
+      z-index: 1;
+    }
+    .answers-label {
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .answer-btn {
+      width: 100%;
+      padding: 18px 20px;
+      background: #0d0f14;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      color: var(--text);
+      font-size: 15px;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: all .2s;
+      text-align: left;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+    .answer-btn:hover { border-color: var(--purple); background: rgba(124,58,237,0.06); }
+    .answer-btn:disabled { opacity: .4; cursor: default; }
+    .answer-btn.chosen {
+      border-color: var(--purple);
+      background: rgba(124,58,237,0.1);
+    }
+
+    /* ── таймер ── */
+    .timer-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .timer-value {
+      font-family: var(--font-display);
+      font-size: 40px;
+      color: var(--amber);
+      min-width: 70px;
+      text-align: center;
+    }
+    .timer-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .timer-ring {
+      width: 70px; height: 70px;
+      position: relative;
+    }
+    .timer-ring svg {
+      transform: rotate(-90deg);
+    }
+    .timer-ring circle {
+      fill: none;
+      stroke: var(--border);
+      stroke-width: 4;
+    }
+    .timer-ring .progress {
+      stroke: var(--amber);
+      stroke-dasharray: 188;
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset .9s linear;
+    }
+
+    /* ── результат ── */
+    .result-card {
+      text-align: center;
+      padding: 32px 24px;
+    }
+    .result-emoji { font-size: 60px; margin-bottom: 16px; display: block; }
+    .result-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      margin-bottom: 16px;
+    }
+    .result-feedback {
+      color: #b0b0c0;
+      font-size: 15px;
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+    .fuel-change {
+      display: inline-block;
+      font-family: var(--font-display);
+      font-size: 28px;
+      padding: 10px 24px;
+      border-radius: 14px;
+    }
+    .fuel-change.plus {
+      color: var(--green);
+      background: rgba(34,197,94,0.1);
+      border: 1px solid rgba(34,197,94,0.3);
+    }
+    .fuel-change.minus {
+      color: var(--red);
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+    }
+    .fuel-change.zero {
+      color: var(--amber);
+      background: rgba(245,158,11,0.1);
+      border: 1px solid rgba(245,158,11,0.3);
+    }
+
+    /* ── событие ── */
+    .event-emoji { font-size: 72px; text-align: center; display: block; margin-bottom: 16px; }
+    .event-title {
+      font-family: var(--font-display);
+      font-size: 26px;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .event-text {
+      color: var(--muted);
+      text-align: center;
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    .event-effect {
+      font-size: 18px;
+      font-weight: 700;
+      text-align: center;
+      color: var(--amber);
+    }
+
+    /* ── гонка ── */
+    .race-track {
+      background: #060709;
+      border: 1px solid #1a1a2e;
+      border-radius: 16px;
+      padding: 20px 16px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .race-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .race-row:last-child { margin-bottom: 0; }
+    .race-name {
+      font-size: 13px;
+      color: var(--muted);
+      width: 90px;
+      flex-shrink: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .race-bar-wrap {
+      flex: 1;
+      background: #111;
+      border-radius: 8px;
+      height: 32px;
+      position: relative;
+      overflow: visible;
+    }
+    .race-bar {
+      height: 100%;
+      border-radius: 8px;
+      background: linear-gradient(90deg, var(--purple), var(--amber));
+      transition: width .8s cubic-bezier(.4,0,.2,1);
+      position: relative;
+    }
+    .race-car {
+      position: absolute;
+      right: -18px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 22px;
+    }
+
+    /* ── финал ── */
+    .podium { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+    .podium-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 20px;
+      background: #0d0f14;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+    .podium-row.first {
+      border-color: var(--amber);
+      background: rgba(245,158,11,0.06);
+    }
+    .podium-pos {
+      font-family: var(--font-display);
+      font-size: 24px;
+      width: 36px;
+      text-align: center;
+    }
+    .podium-car { font-size: 28px; }
+    .podium-name { flex: 1; font-weight: 600; font-size: 16px; }
+    .podium-fuel {
+      font-family: var(--font-display);
+      font-size: 20px;
+      color: var(--amber);
+    }
+
+    /* ── shield badge ── */
+    .shield-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(34,197,94,0.1);
+      border: 1px solid rgba(34,197,94,0.3);
+      color: var(--green);
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      margin-left: 8px;
+    }
+  </style>
+</head>
+<body>
+<div class="screen">
+
+  <!-- Регистрация -->
+  <div id="registrationScreen">
+    <div class="logo">🏁 ПЕРЕВОЗЧИК</div>
+    <div class="tagline">Маршрут: CRM → Оплата</div>
+    <div class="card">
+      <label for="playerName">Имя пилота</label>
+      <input type="text" id="playerName" placeholder="Например: Юля" maxlength="20">
+      <div class="cars-label">Выберите автомобиль</div>
+      <div class="cars">
+        <button class="car" data-car="🚗">🚗</button>
+        <button class="car" data-car="🚙">🚙</button>
+        <button class="car" data-car="🚕">🚕</button>
+        <button class="car" data-car="🚓">🚓</button>
+        <button class="car" data-car="🚚">🚚</button>
+      </div>
+      <button class="btn btn-primary" id="startBtn">ЗАВЕСТИ ДВИГАТЕЛЬ</button>
+    </div>
+  </div>
+
+  <!-- Ожидание -->
+  <div id="waitingScreen" class="hidden">
+    <div class="player-header" id="playerHeader"></div>
+    <div class="card">
+      <div class="computer">
+        <div class="computer-title">🖥️ Бортовой компьютер</div>
+        <div class="pulse-ring"></div>
+        <div id="waitingText" class="waiting-dots">Ожидаем сигнал диспетчера</div>
+      </div>
+      <div class="fuel-section">
+        <div class="fuel-header">
+          <span class="fuel-label">⛽ Топливо</span>
+          <span class="fuel-value" id="fuelValue">100</span>
+        </div>
+        <div class="fuel-bar">
+          <div class="fuel-fill" id="fuelFill" style="width:100%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Пассажир -->
+  <div id="passengerScreen" class="hidden">
+    <div class="logo">🏁 ПЕРЕВОЗЧИК</div>
+    <div class="card">
+      <div class="client-portrait-wrap">
+        <img class="client-portrait" id="clientPortrait" src="" alt="" />
+        <span class="client-emoji-fallback" id="clientEmoji">👩</span>
+      </div>
+      <div class="client-name" id="clientName">Мария</div>
+      <div class="client-title" id="clientTitle">Мама-торнадо</div>
+      <div class="client-desc" id="clientDesc"></div>
+      <div class="client-stats" id="clientStats"></div>
+    </div>
+    <div class="fuel-section" style="padding:0 4px">
+      <div class="fuel-header">
+        <span class="fuel-label">⛽ Топливо</span>
+        <span class="fuel-value" id="fuelValue2">100</span>
+      </div>
+      <div class="fuel-bar">
+        <div class="fuel-fill" id="fuelFill2" style="width:100%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Вопрос -->
+  <div id="questionScreen" class="hidden">
+    <div class="logo" style="font-size:24px;margin-bottom:4px">🏁 ПЕРЕВОЗЧИК</div>
+    <div class="card">
+      <div class="stage-badge" id="stageBadge">Заявка</div>
+      <div class="trap-badge" id="trapBadge">Засада №1</div>
+      <div class="trap-subtitle" id="trapSubtitle"></div>
+      <div class="question-bubble" id="questionText"></div>
+      <div class="answers-label">Ваше решение:</div>
+      <div id="answers"></div>
+      <div class="timer-row">
+        <div>
+          <div class="timer-value" id="timerValue">45</div>
+          <div class="timer-label">секунд</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Результат ответа -->
+  <div id="resultScreen" class="hidden">
+    <div class="logo" style="font-size:24px;margin-bottom:16px">🏁 ПЕРЕВОЗЧИК</div>
+    <div class="card result-card">
+      <span class="result-emoji" id="resultEmoji">✅</span>
+      <div class="result-title" id="resultTitle">Решение принято!</div>
+      <div class="result-feedback" id="resultFeedback"></div>
+      <div class="fuel-change" id="fuelChange">+15 ⛽</div>
+    </div>
+    <div class="fuel-section" style="margin-top:16px;padding:0 4px">
+      <div class="fuel-header">
+        <span class="fuel-label">⛽ Топливо</span>
+        <span class="fuel-value" id="fuelValue3">100</span>
+      </div>
+      <div class="fuel-bar">
+        <div class="fuel-fill" id="fuelFill3" style="width:100%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Случайное событие -->
+  <div id="eventScreen" class="hidden">
+    <div class="logo" style="font-size:24px;margin-bottom:16px">🏁 ПЕРЕВОЗЧИК</div>
+    <div class="card" style="text-align:center;padding:36px 24px">
+      <span class="event-emoji" id="eventEmoji">🚧</span>
+      <div class="event-title" id="eventTitle">Событие!</div>
+      <div class="event-text" id="eventText"></div>
+      <div class="event-effect" id="eventEffect"></div>
+    </div>
+  </div>
+
+  <!-- Гонка -->
+  <div id="raceScreen" class="hidden">
+    <div class="logo" style="font-size:24px;margin-bottom:16px">🏁 ПЕРЕВОЗЧИК</div>
+    <div class="card" style="padding:20px 16px">
+      <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:16px;text-align:center">Текущее положение</div>
+      <div id="raceTrack"></div>
+    </div>
+  </div>
+
+  <!-- Финал -->
+  <div id="finalScreen" class="hidden">
+    <div class="logo" style="margin-bottom:8px">🏆 ФИНИШ</div>
+    <div class="tagline">Доехали до оплаты!</div>
+    <div class="card">
+      <div style="text-align:center;margin-bottom:20px;color:var(--muted);font-size:14px">Итоговая таблица</div>
+      <div class="podium" id="podium"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="config.js"></script>
+<script src="questions.js"></script>
+<script>
+
+// ── Состояние игрока ─────────────────────────────────────────
+let state = {
+  id: localStorage.getItem("playerId"),
+  name: localStorage.getItem("playerName"),
+  car: localStorage.getItem("playerCar"),
+  fuel: parseInt(localStorage.getItem("playerFuel") || "100"),
+  selectedCar: "",
+  lastGameState: null,
+  timerInterval: null,
+  answered: false,
+  shielded: false
+};
+
+// ── Регистрация ──────────────────────────────────────────────
+document.querySelectorAll(".car").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".car").forEach(c => c.classList.remove("selected"));
+    btn.classList.add("selected");
+    state.selectedCar = btn.dataset.car;
+  });
+});
+
+document.getElementById("startBtn").addEventListener("click", joinGame);
+document.getElementById("playerName").addEventListener("keydown", e => {
+  if (e.key === "Enter") joinGame();
+});
+
+async function joinGame() {
+  const name = document.getElementById("playerName").value.trim();
+  if (!name) { alert("Введите имя пилота"); return; }
+  if (!state.selectedCar) { alert("Выберите автомобиль"); return; }
+
+  const btn = document.getElementById("startBtn");
+  btn.disabled = true;
+  btn.textContent = "Подключаемся...";
+
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "join", name, car: state.selectedCar })
+    });
+    const data = await res.json();
+
+    state.id = data.id;
+    state.name = data.name || name;
+    state.car = data.car || state.selectedCar;
+    state.fuel = data.fuel || 100;
+
+    localStorage.setItem("playerId", state.id);
+    localStorage.setItem("playerName", state.name);
+    localStorage.setItem("playerCar", state.car);
+    localStorage.setItem("playerFuel", state.fuel);
+
+    showWaiting();
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = "ЗАВЕСТИ ДВИГАТЕЛЬ";
+    alert("Ошибка подключения. Проверьте интернет.");
+  }
+}
+
+// ── Навигация ─────────────────────────────────────────────────
+function hideAll() {
+  ["registrationScreen","waitingScreen","passengerScreen",
+   "questionScreen","resultScreen","eventScreen","raceScreen","finalScreen"]
+    .forEach(id => document.getElementById(id).classList.add("hidden"));
+}
+
+function showWaiting(text) {
+  hideAll();
+  document.getElementById("waitingScreen").classList.remove("hidden");
+  document.getElementById("playerHeader").innerHTML =
+    `${state.car} ${state.name}` + (state.shielded ? '<span class="shield-badge">🛡 Щит</span>' : '');
+  if (text) {
+    document.getElementById("waitingText").textContent = text;
+    document.getElementById("waitingText").className = "";
+  } else {
+    document.getElementById("waitingText").className = "waiting-dots";
+    document.getElementById("waitingText").textContent = "Ожидаем сигнал диспетчера";
+  }
+  updateFuelUI();
+}
+
+function updateFuelUI() {
+  const f = state.fuel;
+  ["fuelValue","fuelValue2","fuelValue3"].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.textContent = f;
+  });
+  ["fuelFill","fuelFill2","fuelFill3"].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.style.width = f + "%";
+  });
+}
+
+// ── Показ пассажира ───────────────────────────────────────────
+function showPassenger(clientId) {
+  hideAll();
+  const client = GAME_DATA.clients.find(c => c.id === clientId);
+  if (!client) return;
+
+  document.getElementById("passengerScreen").classList.remove("hidden");
+  const portrait = document.getElementById("clientPortrait");
+  const fallback = document.getElementById("clientEmoji");
+  if (client.image) {
+    portrait.src = client.image;
+    portrait.style.display = "block";
+    fallback.style.display = "none";
+    portrait.onerror = () => { portrait.style.display = "none"; fallback.style.display = "block"; };
+  } else {
+    portrait.style.display = "none";
+    fallback.style.display = "block";
+  }
+  fallback.textContent = client.emoji;
+  document.getElementById("clientName").textContent = client.name;
+  document.getElementById("clientTitle").textContent = client.title;
+  document.getElementById("clientDesc").textContent = client.description;
+
+  const statsEl = document.getElementById("clientStats");
+  statsEl.innerHTML = client.stats.map(s => `<div class="stat-row">${s}</div>`).join("");
+
+  updateFuelUI();
+  state.answered = false;
+}
+
+// ── Показ вопроса ────────────────────────────────────────────
+function showQuestion(questionId, clientId) {
+  if (state.answered) return;
+  hideAll();
+  clearInterval(state.timerInterval);
+
+  let trap = null;
+  let clientName = "";
+
+  if (questionId === "final") {
+    trap = GAME_DATA.finalTrap;
+    clientName = "Финальная засада";
+  } else {
+    for (const client of GAME_DATA.clients) {
+      const found = client.traps.find(t => t.id === parseInt(questionId));
+      if (found) { trap = found; clientName = client.name; break; }
+    }
+  }
+
+  if (!trap) return;
+
+  document.getElementById("questionScreen").classList.remove("hidden");
+  document.getElementById("stageBadge").textContent = trap.stage || "";
+  document.getElementById("trapBadge").textContent = trap.title;
+  document.getElementById("trapSubtitle").textContent = trap.subtitle;
+  document.getElementById("questionText").textContent = trap.text;
+
+  const answersEl = document.getElementById("answers");
+  answersEl.innerHTML = "";
+  trap.answers.forEach((answer, index) => {
+    const btn = document.createElement("button");
+    btn.className = "answer-btn";
+    btn.textContent = answer.text;
+    btn.onclick = () => sendAnswer(index, answer, btn);
+    answersEl.appendChild(btn);
+  });
+
+  // Таймер
+  let timeLeft = 45;
+  document.getElementById("timerValue").textContent = timeLeft;
+  state.timerInterval = setInterval(() => {
+    timeLeft--;
+    document.getElementById("timerValue").textContent = timeLeft;
+    if (timeLeft <= 10) {
+      document.getElementById("timerValue").style.color = "var(--red)";
+    }
+    if (timeLeft <= 0) {
+      clearInterval(state.timerInterval);
+      if (!state.answered) {
+        sendAnswer(null, null, null); // тайм-аут
+      }
+    }
+  }, 1000);
+}
+
+// ── Отправка ответа ───────────────────────────────────────────
+async function sendAnswer(index, answer, btn) {
+  if (state.answered) return;
+  state.answered = true;
+  clearInterval(state.timerInterval);
+
+  document.querySelectorAll(".answer-btn").forEach(b => {
+    b.disabled = true;
+  });
+  if (btn) btn.classList.add("chosen");
+
+  let fuelChange = 0;
+  let feedback = "Время вышло! Ответ не был дан.";
+  let emoji = "⏱️";
+  let title = "Время вышло!";
+
+  if (answer) {
+    fuelChange = answer.fuel;
+    feedback = answer.feedback;
+    if (answer.type === "fast") { emoji = "✅"; title = "Хорошее решение!"; }
+    else if (answer.type === "crash") { emoji = "💥"; title = "Авария!"; }
+    else if (answer.type === "traffic") { emoji = "🚧"; title = "Пробка..."; }
+  }
+
+  // Оптимистично показываем предполагаемый результат — щит сервер учтёт сам,
+  // окончательное топливо возьмём из ответа сервера (он единственный источник истины).
+  let optimisticFuel = Math.max(0, Math.min(100, state.fuel + (state.shielded && fuelChange < 0 ? 0 : fuelChange)));
+
+  // Отправляем на сервер сырое значение fuelChange — сервер сам решает,
+  // гасить ли щит, никакой параллельной логики на клиенте.
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "submitAnswer",
+        id: state.id,
+        questionId: index !== null ? index : -1,
+        answer: index !== null ? String(index) : "-1",
+        fuel: fuelChange
+      })
+    });
+    const data = await res.json();
+    if (typeof data.fuel === "number") {
+      state.fuel = data.fuel;
+    } else {
+      state.fuel = optimisticFuel;
+    }
+    if (data.shieldUsed) {
+      state.shielded = false;
+      feedback += " (Щит защитил вас от штрафа!)";
+    }
+  } catch(e) {
+    state.fuel = optimisticFuel;
+  }
+  localStorage.setItem("playerFuel", state.fuel);
+  updateFuelUI();
+
+  // Показываем результат
+  hideAll();
+  document.getElementById("resultScreen").classList.remove("hidden");
+  document.getElementById("resultEmoji").textContent = emoji;
+  document.getElementById("resultTitle").textContent = title;
+  document.getElementById("resultFeedback").textContent = feedback;
+
+  const fuelEl = document.getElementById("fuelChange");
+  if (fuelChange > 0) {
+    fuelEl.textContent = `+${fuelChange} ⛽`;
+    fuelEl.className = "fuel-change plus";
+  } else if (fuelChange < 0) {
+    fuelEl.textContent = `${fuelChange} ⛽`;
+    fuelEl.className = "fuel-change minus";
+  } else {
+    fuelEl.textContent = `0 ⛽`;
+    fuelEl.className = "fuel-change zero";
+  }
+
+  document.getElementById("fuelValue3").textContent = state.fuel;
+  document.getElementById("fuelFill3").style.width = state.fuel + "%";
+}
+
+// ── Показ события ────────────────────────────────────────────
+function showEvent(game) {
+  hideAll();
+  document.getElementById("eventScreen").classList.remove("hidden");
+  document.getElementById("eventEmoji").textContent = game.eventId ? getEventEmoji(game.eventId) : "🎲";
+  document.getElementById("eventTitle").textContent = game.eventTitle || "Случайное событие!";
+  document.getElementById("eventText").textContent = game.eventText || "";
+  document.getElementById("eventEffect").textContent = game.eventEffect || "";
+
+  // Применяем эффект топлива
+  const effect = parseInt(game.eventEffect) || 0;
+  if (effect !== 0) {
+    state.fuel = Math.max(0, Math.min(100, state.fuel + effect));
+    localStorage.setItem("playerFuel", state.fuel);
+  }
+}
+
+function getEventEmoji(eventId) {
+  const map = { traffic:"🚧", fuel:"⛽", turbo:"⚡", rescue:"🆘" };
+  return map[eventId] || "🎲";
+}
+
+// ── Гонка ────────────────────────────────────────────────────
+function showRace(players) {
+  hideAll();
+  document.getElementById("raceScreen").classList.remove("hidden");
+  const track = document.getElementById("raceTrack");
+  const sorted = [...players].sort((a,b) => b.fuel - a.fuel);
+
+  track.innerHTML = sorted.map(p => `
+    <div class="race-row">
+      <div class="race-name">${p.name}</div>
+      <div class="race-bar-wrap">
+        <div class="race-bar" style="width:${p.fuel}%">
+          <span class="race-car">${p.car}</span>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+// ── Финал ────────────────────────────────────────────────────
+function showFinal(players) {
+  hideAll();
+  document.getElementById("finalScreen").classList.remove("hidden");
+  const sorted = [...players].sort((a,b) => b.fuel - a.fuel);
+  const medals = ["🥇","🥈","🥉"];
+
+  document.getElementById("podium").innerHTML = sorted.map((p, i) => `
+    <div class="podium-row ${i===0?'first':''}">
+      <div class="podium-pos">${medals[i] || (i+1)}</div>
+      <div class="podium-car">${p.car}</div>
+      <div class="podium-name">${p.name}</div>
+      <div class="podium-fuel">${p.fuel} ⛽</div>
+    </div>
+  `).join("");
+}
+
+// ── Polling ───────────────────────────────────────────────────
+async function checkGame() {
+  if (!state.id) return;
+  try {
+    const [stateRes, playersRes] = await Promise.all([
+      fetch(API_URL + "?action=gameState"),
+      fetch(API_URL + "?action=players")
+    ]);
+    const game = await stateRes.json();
+    const players = await playersRes.json();
+
+    // Обновляем топливо с сервера
+    const me = players.find(p => p.id === state.id);
+    if (me) {
+      state.fuel = me.fuel;
+      state.shielded = me.shield;
+      updateFuelUI();
+    }
+
+    const gameKey = JSON.stringify(game);
+    if (gameKey === state.lastGameState) return;
+    state.lastGameState = gameKey;
+
+    if (game.state === "passenger") {
+      showPassenger(game.clientId);
+    } else if (game.state === "question") {
+      state.answered = false;
+      showQuestion(game.questionId, game.clientId);
+    } else if (game.state === "event") {
+      showEvent(game);
+    } else if (game.state === "race") {
+      showRace(players);
+    } else if (game.state === "finalResults") {
+      showFinal(players);
+    } else if (game.state === "waiting") {
+      const currentEl = document.getElementById("resultScreen");
+      if (currentEl && !currentEl.classList.contains("hidden")) {
+        // оставляем результат пока не придёт новое состояние
+      } else if (!document.getElementById("registrationScreen").classList.contains("hidden")) {
+        // не трогаем
+      } else {
+        showWaiting();
+      }
+    }
+  } catch(e) {}
+}
+
+// ── Старт ─────────────────────────────────────────────────────
+if (state.id) {
+  showWaiting();
+  setInterval(checkGame, 2500);
+} else {
+  document.getElementById("registrationScreen").classList.remove("hidden");
+  setInterval(checkGame, 2500);
+}
+
+</script>
+</body>
+</html>
