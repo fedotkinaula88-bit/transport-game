@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Перевозчик — Ведущий</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #08090d;
+      --surface: #111318;
+      --border: #1e2130;
+      --purple: #7c3aed;
+      --purple-glow: rgba(124,58,237,0.3);
+      --amber: #f59e0b;
+      --green: #22c55e;
+      --red: #ef4444;
+      --text: #f1f1f3;
+      --muted: #6b7280;
+      --font-display: 'Russo One', sans-serif;
+      --font-body: 'Inter', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      background-image: radial-gradient(rgba(124,58,237,0.08) 1px, transparent 1px);
+      background-size: 14px 14px;
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      padding: 24px;
+      position: relative;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 999;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.02) 0px,
+        rgba(255,255,255,0.02) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+      opacity: .4;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .logo {
+      font-family: var(--font-display);
+      font-size: 28px;
+      transform: skewX(-6deg);
+      background: linear-gradient(135deg, #fff 20%, var(--amber) 55%, var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(2px 2px 0 rgba(0,0,0,.6));
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 8px 16px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: blink 1.5s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .stage-pill {
+      display: inline-block;
+      background: rgba(245,158,11,0.14);
+      border: 1px solid rgba(245,158,11,0.4);
+      color: var(--amber);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    /* ── Гонка ── */
+    .race-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .race-row:last-child { margin-bottom: 0; }
+    .race-info {
+      width: 140px;
+      flex-shrink: 0;
+    }
+    .race-player-name {
+      font-weight: 600;
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .race-fuel-num {
+      font-family: var(--font-display);
+      font-size: 20px;
+      color: var(--amber);
+    }
+    .race-bar-wrap {
+      flex: 1;
+      background: #0d0f14;
+      border-radius: 10px;
+      height: 44px;
+      position: relative;
+      overflow: visible;
+    }
+    .race-bar {
+      height: 100%;
+      border-radius: 10px;
+      background: linear-gradient(90deg, var(--purple), var(--amber));
+      transition: width .8s cubic-bezier(.4,0,.2,1);
+      position: relative;
+      min-width: 4px;
+    }
+    .race-car {
+      position: absolute;
+      right: -22px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 28px;
+      filter: drop-shadow(0 0 8px var(--purple-glow));
+    }
+    .race-finish {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--amber);
+      opacity: .3;
+    }
+
+    /* ── Ответы ── */
+    .answer-stat {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .answer-stat:last-child { border-bottom: none; }
+    .answer-num {
+      font-family: var(--font-display);
+      font-size: 22px;
+      width: 36px;
+      text-align: center;
+    }
+    .answer-text {
+      flex: 1;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .answer-count {
+      font-family: var(--font-display);
+      font-size: 24px;
+    }
+
+    /* ── Кнопки управления ── */
+    .btn {
+      width: 100%;
+      padding: 14px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: var(--font-display);
+      letter-spacing: 1px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all .2s;
+      margin-bottom: 10px;
+      text-align: left;
+    }
+    .btn:last-child { margin-bottom: 0; }
+    .btn-purple {
+      background: var(--purple);
+      color: white;
+      box-shadow: 0 0 20px var(--purple-glow);
+    }
+    .btn-purple:hover { background: #6d28d9; }
+    .btn-dark {
+      background: #161820;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-dark:hover { border-color: var(--purple); background: rgba(124,58,237,0.06); }
+    .btn-red {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: var(--red);
+    }
+    .btn-red:hover { background: rgba(239,68,68,0.2); }
+    .btn-amber {
+      background: rgba(245,158,11,0.1);
+      border: 1px solid rgba(245,158,11,0.3);
+      color: var(--amber);
+    }
+    .btn-amber:hover { background: rgba(245,158,11,0.2); }
+
+    /* ── Выбор клиента ── */
+    .client-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .client-btn {
+      padding: 12px;
+      background: #0d0f14;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: var(--font-body);
+      cursor: pointer;
+      font-size: 13px;
+      text-align: center;
+      transition: all .2s;
+    }
+    .client-btn:hover { border-color: var(--purple); }
+    .client-btn.active {
+      border-color: var(--purple);
+      background: rgba(124,58,237,0.1);
+    }
+
+    /* ── Вопросы ── */
+    .trap-btn {
+      width: 100%;
+      padding: 10px 14px;
+      background: #0d0f14;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 13px;
+      text-align: left;
+      cursor: pointer;
+      transition: all .2s;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .trap-btn:hover { border-color: var(--red); background: rgba(239,68,68,0.04); }
+    .trap-num {
+      font-family: var(--font-display);
+      font-size: 12px;
+      color: var(--red);
+      flex-shrink: 0;
+    }
+
+    /* ── события ── */
+    .event-btn {
+      padding: 10px 14px;
+      background: #0d0f14;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all .2s;
+      margin-bottom: 6px;
+      width: 100%;
+      text-align: left;
+    }
+    .event-btn:hover { border-color: var(--amber); }
+
+    /* ── Игроки ── */
+    .player-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .player-row:last-child { border-bottom: none; }
+    .player-car { font-size: 22px; }
+    .player-name { flex: 1; font-weight: 500; }
+    .player-fuel {
+      font-family: var(--font-display);
+      font-size: 18px;
+      color: var(--amber);
+    }
+    .player-answered {
+      font-size: 18px;
+    }
+
+    /* ── счётчики ── */
+    .stats-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .stat-box {
+      flex: 1;
+      background: #0d0f14;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+    .stat-num {
+      font-family: var(--font-display);
+      font-size: 28px;
+      margin-bottom: 4px;
+    }
+    .stat-label {
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* ── textarea ── */
+    textarea {
+      width: 100%;
+      background: #0d0f14;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 13px;
+      padding: 10px 12px;
+      resize: vertical;
+      margin-top: 8px;
+    }
+    input[type="text"], input[type="number"] {
+      background: #0d0f14;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 13px;
+      padding: 8px 12px;
+      width: 100%;
+      margin-bottom: 8px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+      margin-top: 16px;
+    }
+    .section-title:first-child { margin-top: 0; }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 16px 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">🏁 ПЕРЕВОЗЧИК — Ведущий</div>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div class="status-badge" id="timerBadge" style="display:none">
+      ⏱️ <strong id="timerNum">45</strong> сек
+    </div>
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      Подключено: <strong id="countPlayers">0</strong>
+      &nbsp;·&nbsp;
+      Ответили: <strong id="countAnswered">0</strong>
+    </div>
+  </div>
+</div>
+
+<div class="grid">
+
+  <!-- Левая колонка — гонка + игроки -->
+  <div>
+
+    <!-- Гонка -->
+    <div class="card">
+      <div class="card-title">🏎️ Текущая гонка — CRM → Оплата</div>
+      <div id="raceTrack">
+        <div style="color:var(--muted);text-align:center;padding:20px">Ожидаем участников...</div>
+      </div>
+    </div>
+
+    <!-- Текущая засада — крупно, чтобы читалось с шеринга экрана -->
+    <div class="card" id="currentQuestionCard" style="display:none">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+        <span class="stage-pill" id="cqStage">Этап</span>
+        <span style="font-size:13px;color:var(--muted)" id="cqTrapTitle">Засада</span>
+      </div>
+      <div style="font-size:24px;font-weight:700;margin-bottom:10px" id="cqSubtitle"></div>
+      <div style="font-size:19px;line-height:1.5;background:#0d0f14;border:2px solid var(--border);border-radius:14px;padding:18px 20px" id="cqText"></div>
+    </div>
+
+    <!-- Статистика ответов -->
+    <div class="card" id="answersCard" style="display:none">
+      <div class="card-title">📊 Ответы на текущий вопрос</div>
+      <div id="answerStats"></div>
+    </div>
+
+    <!-- Список игроков -->
+    <div class="card">
+      <div class="card-title">👥 Участники</div>
+      <div id="playersList">
+        <div style="color:var(--muted);font-size:14px">Ожидаем участников...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Правая колонка — управление -->
+  <div>
+
+    <!-- QR-код для входа -->
+    <div class="card">
+      <div class="card-title">🔗 Вход для агентов</div>
+      <input type="text" id="linkInput" placeholder="Вставьте ссылку на index.html" oninput="renderQR()">
+      <div id="qrWrap" style="display:none; text-align:center; margin-top:12px;">
+        <img id="qrImg" style="width:180px;height:180px;border-radius:12px;border:3px solid var(--border);background:#fff;padding:8px" />
+        <div style="font-size:11px;color:var(--muted);margin-top:8px">Отсканируйте камерой телефона</div>
+      </div>
+    </div>
+
+    <!-- Пассажиры -->
+    <div class="card">
+      <div class="card-title">👤 Показать пассажира</div>
+      <div class="section-title">Сейчас</div>
+      <div class="client-grid" id="clientButtonsMain"></div>
+      <div class="section-title" id="reserveToggle" style="cursor:pointer" onclick="toggleReserve()">▸ Если останется время</div>
+      <div class="client-grid" id="clientButtonsReserve" style="display:none"></div>
+    </div>
+
+    <!-- Засады -->
+    <div class="card">
+      <div class="card-title">⚠️ Запустить засаду</div>
+      <div id="trapButtons"></div>
+      <hr class="divider">
+      <button class="trap-btn" onclick="launchFinalTrap()">
+        <span class="trap-num">12</span>
+        Финальная засада — Исчезновение
+      </button>
+    </div>
+
+    <!-- Случайные события -->
+    <div class="card">
+      <div class="card-title">🎲 Случайное событие</div>
+      <div id="eventButtons"></div>
+    </div>
+
+    <!-- Управление игрой -->
+    <div class="card">
+      <div class="card-title">🎮 Управление игрой</div>
+      <button class="btn btn-dark" onclick="showResults()">📊 Показать результаты участникам</button>
+      <button class="btn btn-amber" onclick="showRace()">🏎️ Показать гонку</button>
+      <button class="btn btn-purple" onclick="showFinalResults()">🏆 Финал — подвести итоги</button>
+      <button class="btn btn-dark" onclick="setWaiting()">⏸️ Вернуть в ожидание</button>
+      <hr class="divider">
+      <button class="btn btn-red" onclick="resetGame()">🔄 Начать заново</button>
+    </div>
+
+  </div>
+
+</div>
+
+<script src="config.js"></script>
+<script src="questions.js"></script>
+<script>
+
+// ══════════════════════════ ЗВУК (Web Audio API, без файлов) ══════════════════════════
+const SFX = (() => {
+  let ctx = null;
+  function ac() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === "suspended") ctx.resume();
+    return ctx;
+  }
+  function tone(freq, duration, type = "square", startGain = 0.15, delay = 0) {
+    try {
+      const c = ac();
+      const osc = c.createOscillator();
+      const gain = c.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, c.currentTime + delay);
+      gain.gain.setValueAtTime(startGain, c.currentTime + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + duration);
+      osc.connect(gain).connect(c.destination);
+      osc.start(c.currentTime + delay);
+      osc.stop(c.currentTime + delay + duration);
+    } catch(e) {}
+  }
+  return {
+    engineStart() {
+      tone(80, 0.25, "sawtooth", 0.18);
+      tone(120, 0.2, "sawtooth", 0.12, 0.08);
+      tone(200, 0.15, "sawtooth", 0.08, 0.18);
+    },
+    tick(urgent) {
+      tone(urgent ? 1400 : 900, 0.08, "square", urgent ? 0.12 : 0.07);
+    },
+    timeUp() {
+      tone(220, 0.4, "sawtooth", 0.18);
+      tone(160, 0.5, "sawtooth", 0.15, 0.1);
+    },
+    success() {
+      tone(523, 0.12, "square", 0.12);
+      tone(659, 0.12, "square", 0.12, 0.1);
+      tone(880, 0.22, "square", 0.14, 0.2);
+    },
+    fail() {
+      tone(180, 0.35, "sawtooth", 0.18);
+      tone(120, 0.4, "sawtooth", 0.16, 0.08);
+    },
+    neutral() {
+      tone(300, 0.15, "triangle", 0.12);
+      tone(260, 0.2, "triangle", 0.1, 0.12);
+    },
+    event() {
+      tone(700, 0.08, "square", 0.14);
+      tone(1000, 0.08, "square", 0.14, 0.09);
+      tone(1300, 0.15, "square", 0.14, 0.18);
+    },
+    fanfare() {
+      [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.3, "square", 0.15, i * 0.15));
+    },
+    blip() {
+      tone(400, 0.06, "square", 0.1);
+    }
+  };
+})();
+
+// ══════════════════════════ Таймер ведущего ══════════════════════════
+let hostTimerInterval = null;
+function startHostTimer(seconds = 45) {
+  clearInterval(hostTimerInterval);
+  let left = seconds;
+  const badge = document.getElementById("timerBadge");
+  const num = document.getElementById("timerNum");
+  badge.style.display = "inline-flex";
+  num.textContent = left;
+  num.style.color = "";
+  hostTimerInterval = setInterval(() => {
+    left--;
+    num.textContent = Math.max(left, 0);
+    if (left <= 10 && left > 0) {
+      num.style.color = "var(--red)";
+      SFX.tick(left <= 5);
+    }
+    if (left <= 0) {
+      clearInterval(hostTimerInterval);
+      SFX.timeUp();
+      badge.style.display = "none";
+    }
+  }, 1000);
+}
+function stopHostTimer() {
+  clearInterval(hostTimerInterval);
+  document.getElementById("timerBadge").style.display = "none";
+}
+
+let currentPlayers = [];
+let currentQuestionId = null;
+let currentClientId = null;
+
+// ── Строим кнопки из данных ───────────────────────────────────
+
+function buildUI() {
+  // Кнопки клиентов — разделены на "сейчас" и "резерв"
+  const mainClients = GAME_DATA.clients.filter(c => c.tier !== "reserve");
+  const reserveClients = GAME_DATA.clients.filter(c => c.tier === "reserve");
+
+  document.getElementById("clientButtonsMain").innerHTML = mainClients.map(c => `
+    <button class="client-btn" id="clientBtn_${c.id}" onclick="launchClient('${c.id}','${c.name}')">
+      ${c.emoji} ${c.name}
+    </button>
+  `).join("");
+
+  document.getElementById("clientButtonsReserve").innerHTML = reserveClients.map(c => `
+    <button class="client-btn" id="clientBtn_${c.id}" onclick="launchClient('${c.id}','${c.name}')">
+      ${c.emoji} ${c.name}
+    </button>
+  `).join("");
+
+  // Кнопки засад
+  const trapContainer = document.getElementById("trapButtons");
+  let html = "";
+  GAME_DATA.clients.forEach(client => {
+    client.traps.forEach(trap => {
+      html += `
+        <button class="trap-btn" onclick="launchTrap(${trap.id},'${client.id}')">
+          <span class="trap-num">${trap.stage || trap.id}</span>
+          ${client.emoji} ${trap.subtitle}
+        </button>
+      `;
+    });
+  });
+  trapContainer.innerHTML = html;
+
+  // Кнопки событий
+  const eventContainer = document.getElementById("eventButtons");
+  eventContainer.innerHTML = GAME_DATA.randomEvents.map(e => `
+    <button class="event-btn" onclick="launchEvent('${e.id}')">
+      ${e.emoji} ${e.title}
+      <span style="color:var(--amber);font-size:11px;float:right">${e.effectText}</span>
+    </button>
+  `).join("");
+}
+
+function toggleReserve() {
+  const el = document.getElementById("clientButtonsReserve");
+  const toggle = document.getElementById("reserveToggle");
+  const showing = el.style.display !== "none";
+  el.style.display = showing ? "none" : "grid";
+  toggle.textContent = (showing ? "▸" : "▾") + " Если останется время";
+}
+
+// ── QR-код для входа ────────────────────────────────────────────
+function renderQR() {
+  const link = document.getElementById("linkInput").value.trim();
+  const wrap = document.getElementById("qrWrap");
+  if (!link) { wrap.style.display = "none"; return; }
+  document.getElementById("qrImg").src =
+    "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + encodeURIComponent(link);
+  wrap.style.display = "block";
+}
+
+// ── API вызовы ────────────────────────────────────────────────
+
+async function api(body) {
+  try {
+    await fetch(API_URL, { method: "POST", body: JSON.stringify(body) });
+  } catch(e) { console.error(e); }
+}
+
+async function launchClient(clientId, clientName) {
+  document.querySelectorAll(".client-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("clientBtn_" + clientId)?.classList.add("active");
+  currentClientId = clientId;
+  stopHostTimer();
+  document.getElementById("currentQuestionCard").style.display = "none";
+  document.getElementById("answersCard").style.display = "none";
+  SFX.engineStart();
+  await api({ action: "startPassenger", clientId, clientName });
+}
+
+async function launchTrap(trapId, clientId) {
+  currentQuestionId = trapId;
+  currentClientId = clientId || currentClientId;
+
+  const client = GAME_DATA.clients.find(c => c.id === currentClientId);
+  const trap = client?.traps.find(t => t.id === trapId);
+
+  await api({
+    action: "startQuestion",
+    questionId: String(trapId),
+    clientId: currentClientId,
+    trapTitle: trap?.title || ""
+  });
+
+  document.getElementById("currentQuestionCard").style.display = "block";
+  document.getElementById("cqStage").textContent = trap?.stage || "";
+  document.getElementById("cqTrapTitle").textContent = trap?.title || "";
+  document.getElementById("cqSubtitle").textContent = trap?.subtitle || "";
+  document.getElementById("cqText").textContent = trap?.text || "";
+
+  document.getElementById("answersCard").style.display = "block";
+  renderAnswerStats(trapId, currentClientId);
+  SFX.blip();
+  startHostTimer(45);
+}
+
+async function launchFinalTrap() {
+  currentQuestionId = "final";
+  const trap = GAME_DATA.finalTrap;
+  await api({
+    action: "startQuestion",
+    questionId: "final",
+    clientId: "final",
+    trapTitle: "Засада №12"
+  });
+
+  document.getElementById("currentQuestionCard").style.display = "block";
+  document.getElementById("cqStage").textContent = trap?.stage || "";
+  document.getElementById("cqTrapTitle").textContent = trap?.title || "";
+  document.getElementById("cqSubtitle").textContent = trap?.subtitle || "";
+  document.getElementById("cqText").textContent = trap?.text || "";
+
+  document.getElementById("answersCard").style.display = "block";
+  renderFinalAnswerStats();
+  SFX.blip();
+  startHostTimer(45);
+}
+
+async function launchEvent(eventId) {
+  const event = GAME_DATA.randomEvents.find(e => e.id === eventId);
+  if (!event) return;
+
+  const effect = event.effect || 0;
+  SFX.event();
+
+  await api({
+    action: "randomEvent",
+    eventId,
+    eventTitle: event.title,
+    eventText: event.text,
+    eventEffect: effect
+  });
+
+  if (effect !== 0) {
+    await api({ action: "applyEvent", effect });
+  }
+
+  if (event.special === "shield") {
+    // Турбо — выдаём щиты
+    await api({ action: "applyEvent", effect: 0 });
+  }
+}
+
+async function showResults() {
+  stopHostTimer();
+  // Смотрим, какой тип ответа выбрало большинство, и озвучиваем это
+  if (currentQuestionId && currentQuestionId !== "final") {
+    const client = GAME_DATA.clients.find(c => c.id === currentClientId);
+    const trap = client?.traps.find(t => t.id === parseInt(currentQuestionId));
+    if (trap) {
+      const counts = [0, 0, 0];
+      currentPlayers.forEach(p => {
+        const idx = parseInt(p.answer);
+        if (!isNaN(idx) && idx >= 0 && idx < 3) counts[idx]++;
+      });
+      const topIdx = counts.indexOf(Math.max(...counts));
+      const topType = trap.answers[topIdx]?.type;
+      if (topType === "fast") SFX.success();
+      else if (topType === "crash") SFX.fail();
+      else SFX.neutral();
+    }
+  }
+  await api({ action: "showResults", questionId: currentQuestionId });
+}
+
+async function showRace() {
+  SFX.blip();
+  await api({ action: "showRace" });
+}
+
+async function setWaiting() {
+  stopHostTimer();
+  await api({ action: "waiting" });
+}
+
+async function showFinalResults() {
+  stopHostTimer();
+  SFX.fanfare();
+  await api({ action: "showFinalResults" });
+}
+
+async function resetGame() {
+  if (!confirm("Сбросить игру? Все данные будут удалены.")) return;
+  stopHostTimer();
+  await api({ action: "resetGame" });
+  location.reload();
+}
+
+// ── Статистика ответов ────────────────────────────────────────
+
+function renderAnswerStats(trapId, clientId) {
+  const client = GAME_DATA.clients.find(c => c.id === clientId);
+  const trap = client?.traps.find(t => t.id === trapId);
+  if (!trap) return;
+
+  const counts = [0,0,0];
+  currentPlayers.forEach(p => {
+    const idx = parseInt(p.answer);
+    if (!isNaN(idx) && idx >= 0 && idx < 3) counts[idx]++;
+  });
+
+  document.getElementById("answerStats").innerHTML = trap.answers.map((a, i) => `
+    <div class="answer-stat">
+      <div class="answer-num">${i+1}</div>
+      <div class="answer-text">${a.text}</div>
+      <div class="answer-count" style="color:${a.type==='fast'?'var(--green)':a.type==='crash'?'var(--red)':'var(--muted)'}">${counts[i]}</div>
+    </div>
+  `).join("");
+}
+
+function renderFinalAnswerStats() {
+  const trap = GAME_DATA.finalTrap;
+  const counts = [0,0,0];
+  currentPlayers.forEach(p => {
+    const idx = parseInt(p.answer);
+    if (!isNaN(idx) && idx >= 0) counts[idx] = (counts[idx]||0)+1;
+  });
+
+  document.getElementById("answerStats").innerHTML = trap.answers.map((a, i) => `
+    <div class="answer-stat">
+      <div class="answer-num">${i+1}</div>
+      <div class="answer-text">${a.text}</div>
+      <div class="answer-count" style="color:${a.type==='fast'?'var(--green)':a.type==='crash'?'var(--red)':'var(--muted)'}">${counts[i]||0}</div>
+    </div>
+  `).join("");
+}
+
+// ── Рендер гонки ─────────────────────────────────────────────
+
+function renderRace(players) {
+  const sorted = [...players].sort((a,b) => b.fuel - a.fuel);
+  const track = document.getElementById("raceTrack");
+
+  if (!players.length) {
+    track.innerHTML = `<div style="color:var(--muted);text-align:center;padding:20px">Ожидаем участников...</div>`;
+    return;
+  }
+
+  track.innerHTML = sorted.map((p, idx) => {
+    const width = Math.max(2, p.fuel);
+    return `
+      <div class="race-row">
+        <div class="race-info">
+          <div class="race-player-name">${p.name}</div>
+          <div class="race-fuel-num">${p.fuel} ⛽</div>
+        </div>
+        <div class="race-bar-wrap">
+          <div class="race-bar" style="width:${width}%">
+            <span class="race-car">${p.car}</span>
+          </div>
+          <div class="race-finish"></div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+// ── Рендер игроков ────────────────────────────────────────────
+
+function renderPlayers(players) {
+  const list = document.getElementById("playersList");
+  if (!players.length) {
+    list.innerHTML = `<div style="color:var(--muted);font-size:14px">Ожидаем участников...</div>`;
+    return;
+  }
+
+  const answered = players.filter(p => p.answer !== "" && p.answer !== null && p.answer !== undefined);
+
+  document.getElementById("countPlayers").textContent = players.length;
+  document.getElementById("countAnswered").textContent = answered.length;
+
+  list.innerHTML = players.map(p => {
+    const hasAnswer = p.answer !== "" && p.answer !== null && p.answer !== undefined;
+    return `
+      <div class="player-row">
+        <div class="player-car">${p.car}</div>
+        <div class="player-name">${p.name} ${p.shield ? '🛡️' : ''}</div>
+        <div class="player-fuel">${p.fuel}</div>
+        <div class="player-answered">${hasAnswer ? '✅' : '⏳'}</div>
+      </div>
+    `;
+  }).join("");
+
+  // Обновляем статистику ответов если вопрос открыт
+  if (currentQuestionId && document.getElementById("answersCard").style.display !== "none") {
+    if (currentQuestionId === "final") {
+      renderFinalAnswerStats();
+    } else {
+      renderAnswerStats(parseInt(currentQuestionId), currentClientId);
+    }
+  }
+}
+
+// ── Polling ────────────────────────────────────────────────────
+
+async function loadPlayers() {
+  try {
+    const res = await fetch(API_URL + "?action=players");
+    const players = await res.json();
+    currentPlayers = players;
+    renderPlayers(players);
+    renderRace(players);
+  } catch(e) {}
+}
+
+// ── Старт ──────────────────────────────────────────────────────
+
+buildUI();
+loadPlayers();
+setInterval(loadPlayers, 2500);
+
+</script>
+</body>
+</html>
