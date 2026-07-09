@@ -6,6 +6,7 @@
 
 const SHEET_NAME = "GameState";
 const PLAYERS_SHEET = "Players";
+const POLL_SHEET = "PollVotes";
 
 function getOrCreateSheet(name) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -24,6 +25,8 @@ function doGet(e) {
     result = getPlayers();
   } else if (action === "gameState") {
     result = getGameState();
+  } else if (action === "pollVotes") {
+    result = getPollVotes();
   } else if (action === "resetGame") {
     result = resetGame();
   } else {
@@ -51,7 +54,7 @@ function doPost(e) {
   if (action === "join") {
     result = joinPlayer(body.name, body.car);
   } else if (action === "submitAnswer") {
-    result = submitAnswer(body.id, body.questionId, body.answer, body.fuel);
+    result = submitAnswer(body.id, body.questionId, body.answer, body.fuel, body.type);
   } else if (action === "startPassenger") {
     result = setGameState({ state: "passenger", clientId: body.clientId, clientName: body.clientName });
   } else if (action === "startQuestion") {
@@ -68,6 +71,10 @@ function doPost(e) {
     result = setGameState({ state: "race" });
   } else if (action === "showFinalResults") {
     result = setGameState({ state: "finalResults" });
+  } else if (action === "startPoll") {
+    result = startPoll(body.pollQuestion, body.pollOptions);
+  } else if (action === "submitPollVote") {
+    result = submitPollVote(body.id, body.name, body.choice);
   } else if (action === "resetGame") {
     result = resetGame();
   } else {
@@ -80,12 +87,14 @@ function doPost(e) {
 }
 
 // ── Игроки ──────────────────────────────────────────────────
+// Колонки Players: A id, B name, C car, D fuel, E answer, F shield,
+// G timestamp, H fastCount, I trafficCount, J crashCount
 
 function joinPlayer(name, car) {
   const sheet = getOrCreateSheet(PLAYERS_SHEET);
 
   if (sheet.getLastRow() === 0) {
-    sheet.appendRow(["id", "name", "car", "fuel", "answer", "shield", "timestamp"]);
+    sheet.appendRow(["id", "name", "car", "fuel", "answer", "shield", "timestamp", "fastCount", "trafficCount", "crashCount"]);
   }
 
   // Проверяем нет ли уже такого игрока
@@ -97,7 +106,7 @@ function joinPlayer(name, car) {
   }
 
   const id = Utilities.getUuid();
-  sheet.appendRow([id, name, car, 100, "", false, new Date().toISOString()]);
+  sheet.appendRow([id, name, car, 100, "", false, new Date().toISOString(), 0, 0, 0]);
   return { id, name, car, fuel: 100 };
 }
 
@@ -114,13 +123,16 @@ function getPlayers() {
       car: data[i][2],
       fuel: data[i][3],
       answer: data[i][4],
-      shield: data[i][5]
+      shield: data[i][5],
+      fastCount: data[i][7] || 0,
+      trafficCount: data[i][8] || 0,
+      crashCount: data[i][9] || 0
     });
   }
   return players;
 }
 
-function submitAnswer(playerId, questionId, answer, fuelChange) {
+function submitAnswer(playerId, questionId, answer, fuelChange, answerType) {
   const sheet = getOrCreateSheet(PLAYERS_SHEET);
   const data = sheet.getDataRange().getValues();
 
@@ -141,6 +153,16 @@ function submitAnswer(playerId, questionId, answer, fuelChange) {
       }
 
       sheet.getRange(i + 1, 5).setValue(answer);
+
+      // Считаем к какому стилю ответов тянется игрок (для итогового отчёта)
+      if (answerType === "fast") {
+        sheet.getRange(i + 1, 8).setValue((data[i][7] || 0) + 1);
+      } else if (answerType === "traffic") {
+        sheet.getRange(i + 1, 9).setValue((data[i][8] || 0) + 1);
+      } else if (answerType === "crash") {
+        sheet.getRange(i + 1, 10).setValue((data[i][9] || 0) + 1);
+      }
+
       return { success: true, fuel: newFuel, shieldUsed };
     }
   }
@@ -168,13 +190,19 @@ function applyRandomEvent(effect) {
 }
 
 // ── Состояние игры ───────────────────────────────────────────
+// Колонки GameState: A state, B questionId, C clientId, D clientName,
+// E trapTitle, F eventId, G eventTitle, H eventText, I eventEffect,
+// J timestamp, K pollQuestion, L pollOptionsJSON
 
 function getGameState() {
   const sheet = getOrCreateSheet(SHEET_NAME);
   if (sheet.getLastRow() === 0) {
     return { state: "waiting", questionId: null, clientId: null };
   }
-  const data = sheet.getRange(1, 1, 1, 10).getValues()[0];
+  const data = sheet.getRange(1, 1, 1, 12).getValues()[0];
+  let pollOptions = [];
+  try { pollOptions = data[11] ? JSON.parse(data[11]) : []; } catch (e) { pollOptions = []; }
+
   return {
     state: data[0] || "waiting",
     questionId: data[1] || null,
@@ -184,7 +212,9 @@ function getGameState() {
     eventId: data[5] || null,
     eventTitle: data[6] || null,
     eventText: data[7] || null,
-    eventEffect: data[8] || null
+    eventEffect: data[8] || null,
+    pollQuestion: data[10] || null,
+    pollOptions: pollOptions
   };
 }
 
@@ -196,7 +226,7 @@ function setGameState(params) {
     clearAnswers();
   }
 
-  sheet.getRange(1, 1, 1, 10).setValues([[
+  sheet.getRange(1, 1, 1, 12).setValues([[
     params.state || "waiting",
     params.questionId || "",
     params.clientId || "",
@@ -206,7 +236,9 @@ function setGameState(params) {
     params.eventTitle || "",
     params.eventText || "",
     params.eventEffect || "",
-    new Date().toISOString()
+    new Date().toISOString(),
+    params.pollQuestion || "",
+    params.pollOptions ? JSON.stringify(params.pollOptions) : ""
   ]]);
 
   return { success: true };
@@ -219,6 +251,47 @@ function clearAnswers() {
   sheet.getRange(2, 5, lastRow - 1, 1).setValue("");
 }
 
+// ── Опрос с обратной связью ───────────────────────────────────
+
+function startPoll(question, options) {
+  const sheet = getOrCreateSheet(POLL_SHEET);
+  sheet.clearContents();
+  sheet.appendRow(["playerId", "playerName", "choice", "timestamp"]);
+  return setGameState({ state: "poll", pollQuestion: question, pollOptions: options });
+}
+
+function submitPollVote(playerId, playerName, choice) {
+  const sheet = getOrCreateSheet(POLL_SHEET);
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(["playerId", "playerName", "choice", "timestamp"]);
+  }
+
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === playerId) {
+      sheet.getRange(i + 1, 3).setValue(choice);
+      sheet.getRange(i + 1, 4).setValue(new Date().toISOString());
+      return { success: true };
+    }
+  }
+
+  sheet.appendRow([playerId, playerName, choice, new Date().toISOString()]);
+  return { success: true };
+}
+
+function getPollVotes() {
+  const sheet = getOrCreateSheet(POLL_SHEET);
+  if (sheet.getLastRow() < 2) return [];
+  const data = sheet.getDataRange().getValues();
+  const votes = [];
+  for (let i = 1; i < data.length; i++) {
+    votes.push({ playerId: data[i][0], playerName: data[i][1], choice: data[i][2] });
+  }
+  return votes;
+}
+
+// ── Сброс ──────────────────────────────────────────────────────
+
 function resetGame() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
@@ -227,6 +300,9 @@ function resetGame() {
 
   const stateSheet = ss.getSheetByName(SHEET_NAME);
   if (stateSheet) stateSheet.clearContents();
+
+  const pollSheet = ss.getSheetByName(POLL_SHEET);
+  if (pollSheet) pollSheet.clearContents();
 
   return { success: true };
 }

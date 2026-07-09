@@ -754,6 +754,20 @@
       <div style="text-align:center;margin-bottom:20px;color:var(--muted);font-size:14px">Итоговая таблица</div>
       <div class="podium" id="podium"></div>
     </div>
+    <div class="card" id="myStyleCard" style="display:none">
+      <div style="text-align:center;color:var(--muted);font-size:13px;margin-bottom:8px">Твой стиль в этой игре</div>
+      <div style="text-align:center;font-size:18px;font-weight:700" id="myStyleText"></div>
+    </div>
+  </div>
+
+  <!-- Опрос -->
+  <div id="pollScreen" class="hidden">
+    <div class="logo" style="font-size:24px;margin-bottom:16px">📋 ОПРОС</div>
+    <div class="card">
+      <div style="font-size:19px;font-weight:700;margin-bottom:20px;line-height:1.4" id="pollQuestion"></div>
+      <div id="pollOptions"></div>
+      <div id="pollThanks" style="display:none;text-align:center;color:var(--muted);padding:20px 0">Спасибо! Ваш ответ учтён ✅</div>
+    </div>
   </div>
 
 </div>
@@ -772,7 +786,8 @@ let state = {
   lastGameState: null,
   timerInterval: null,
   answered: false,
-  shielded: false
+  shielded: false,
+  pollVoted: false
 };
 
 // ── Регистрация ──────────────────────────────────────────────
@@ -826,7 +841,7 @@ async function joinGame() {
 // ── Навигация ─────────────────────────────────────────────────
 function hideAll() {
   ["registrationScreen","waitingScreen","passengerScreen",
-   "questionScreen","resultScreen","eventScreen","raceScreen","finalScreen"]
+   "questionScreen","resultScreen","eventScreen","raceScreen","finalScreen","pollScreen"]
     .forEach(id => document.getElementById(id).classList.add("hidden"));
 }
 
@@ -916,11 +931,20 @@ function showQuestion(questionId, clientId) {
 
   const answersEl = document.getElementById("answers");
   answersEl.innerHTML = "";
-  trap.answers.forEach((answer, index) => {
+
+  // Перемешиваем порядок кнопок, чтобы правильный ответ не всегда стоял
+  // на одной и той же позиции — иначе через пару засад все жмут "третью кнопку" не читая.
+  const shuffled = trap.answers.map((a, i) => ({ ...a, _origIndex: i }));
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  shuffled.forEach((answer) => {
     const btn = document.createElement("button");
     btn.className = "answer-btn";
     btn.textContent = answer.text;
-    btn.onclick = () => sendAnswer(index, answer, btn);
+    btn.onclick = () => sendAnswer(answer._origIndex, answer, btn);
     answersEl.appendChild(btn);
   });
 
@@ -980,7 +1004,8 @@ async function sendAnswer(index, answer, btn) {
         id: state.id,
         questionId: index !== null ? index : -1,
         answer: index !== null ? String(index) : "-1",
-        fuel: fuelChange
+        fuel: fuelChange,
+        type: answer ? answer.type : "timeout"
       })
     });
     const data = await res.json();
@@ -1078,6 +1103,57 @@ function showFinal(players) {
       <div class="podium-fuel">${p.fuel} ⛽</div>
     </div>
   `).join("");
+
+  const me = players.find(p => p.id === state.id);
+  const styleCard = document.getElementById("myStyleCard");
+  if (me) {
+    const counts = { fast: me.fastCount || 0, traffic: me.trafficCount || 0, crash: me.crashCount || 0 };
+    const max = Math.max(counts.fast, counts.traffic, counts.crash);
+    let styleText = "Пока маловато данных 🙂";
+    if (max > 0) {
+      if (counts.fast === max) styleText = "🛡️ Мастер ценности — чаще всего отрабатывал(а) по-настоящему";
+      else if (counts.traffic === max) styleText = "💰 Король(ева) уступок — часто спасал(а) скидкой";
+      else styleText = "💥 Есть куда расти — попробуй чаще опираться на ценность";
+    }
+    document.getElementById("myStyleText").textContent = styleText;
+    styleCard.style.display = "block";
+  }
+}
+
+// ── Опрос ────────────────────────────────────────────────────
+function showPoll(game) {
+  hideAll();
+  document.getElementById("pollScreen").classList.remove("hidden");
+  document.getElementById("pollQuestion").textContent = game.pollQuestion || "";
+  document.getElementById("pollThanks").style.display = "none";
+
+  const optsEl = document.getElementById("pollOptions");
+  if (state.pollVoted) {
+    optsEl.style.display = "none";
+    document.getElementById("pollThanks").style.display = "block";
+    return;
+  }
+  optsEl.style.display = "block";
+  optsEl.innerHTML = (game.pollOptions || []).map((opt, i) => `
+    <button class="answer-btn" onclick="submitPollVote(${i}, this)">${opt}</button>
+  `).join("");
+}
+
+async function submitPollVote(choiceIndex, btn) {
+  if (state.pollVoted) return;
+  state.pollVoted = true;
+  document.querySelectorAll("#pollOptions .answer-btn").forEach(b => b.disabled = true);
+  if (btn) btn.classList.add("chosen");
+
+  try {
+    await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "submitPollVote", id: state.id, name: state.name, choice: choiceIndex })
+    });
+  } catch(e) {}
+
+  document.getElementById("pollOptions").style.display = "none";
+  document.getElementById("pollThanks").style.display = "block";
 }
 
 // ── Polling ───────────────────────────────────────────────────
@@ -1114,6 +1190,8 @@ async function checkGame() {
       showRace(players);
     } else if (game.state === "finalResults") {
       showFinal(players);
+    } else if (game.state === "poll") {
+      showPoll(game);
     } else if (game.state === "waiting") {
       const currentEl = document.getElementById("resultScreen");
       if (currentEl && !currentEl.classList.contains("hidden")) {

@@ -114,6 +114,44 @@
       .grid { grid-template-columns: 1fr; }
     }
 
+    /* ── Лобби ── */
+    .lobby {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+    }
+    .lobby-inner {
+      width: 100%;
+      max-width: 780px;
+    }
+    .lobby-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 700px) {
+      .lobby-grid { grid-template-columns: 1fr; }
+    }
+    .lobby-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+    .lobby-chip {
+      background: #0d0f14;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 8px 14px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -281,6 +319,35 @@
     }
 
     /* ── Вопросы ── */
+    .btn-next {
+      width: 100%;
+      padding: 22px 20px;
+      background: linear-gradient(135deg, var(--purple), var(--amber));
+      border: none;
+      border-radius: 16px;
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: 17px;
+      letter-spacing: .5px;
+      text-align: left;
+      cursor: pointer;
+      transition: all .15s;
+      box-shadow: 0 0 30px var(--purple-glow);
+      line-height: 1.4;
+    }
+    .btn-next:hover { transform: translateY(-1px); filter: brightness(1.08); }
+    .btn-next:active { transform: translateY(0); }
+    .btn-next small {
+      display: block;
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 400;
+      opacity: .85;
+      margin-top: 4px;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
     .trap-btn {
       width: 100%;
       padding: 10px 14px;
@@ -408,13 +475,53 @@
       border-top: 1px solid var(--border);
       margin: 16px 0;
     }
+
+    .stat-row-host {
+      background: #0d0f14;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
 
+<!-- ══════════════════════ ЛОББИ — стартовый экран ══════════════════════ -->
+<div id="lobbyScreen" class="lobby">
+  <div class="lobby-inner">
+    <div class="logo" style="font-size:44px;margin-bottom:6px">🏁 ПЕРЕВОЗЧИК</div>
+    <div style="text-align:center;color:var(--muted);letter-spacing:1px;text-transform:uppercase;font-size:13px;margin-bottom:36px">Подключение агентов</div>
+
+    <div class="lobby-grid">
+      <div class="card">
+        <div class="card-title">🔗 Ссылка на игру</div>
+        <input type="text" id="linkInput" placeholder="Вставьте ссылку на index.html" oninput="renderQR()">
+        <div id="qrWrap" style="display:none; text-align:center; margin-top:16px;">
+          <img id="qrImg" style="width:220px;height:220px;border-radius:14px;border:3px solid var(--border);background:#fff;padding:10px" />
+          <div style="font-size:12px;color:var(--muted);margin-top:10px">Отсканируйте камерой телефона</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">👥 Подключились: <span id="lobbyCount">0</span></div>
+        <div id="lobbyPlayerChips" class="lobby-chips">
+          <div style="color:var(--muted);font-size:14px">Ожидаем участников...</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-next" style="margin-top:28px;text-align:center" onclick="goToDashboard()">▶ Начать игру</button>
+  </div>
+</div>
+
+<!-- ══════════════════════ ОСНОВНАЯ ПАНЕЛЬ ══════════════════════ -->
+<div id="dashboardScreen" style="display:none">
+
 <div class="header">
   <div class="logo">🏁 ПЕРЕВОЗЧИК — Ведущий</div>
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <button class="status-badge" style="cursor:pointer;border:none" onclick="backToLobby()">◂ Экран подключения</button>
     <div class="status-badge" id="timerBadge" style="display:none">
       ⏱️ <strong id="timerNum">45</strong> сек
     </div>
@@ -456,6 +563,18 @@
       <div id="answerStats"></div>
     </div>
 
+    <!-- Итоговый отчёт по стилям -->
+    <div class="card" id="reportCard" style="display:none">
+      <div class="card-title">📈 Итоговый отчёт — стиль команды</div>
+      <div id="reportBody"></div>
+    </div>
+
+    <!-- Живой опрос -->
+    <div class="card" id="pollResultsCard" style="display:none">
+      <div class="card-title">📋 <span id="pollResultsQuestion"></span></div>
+      <div id="pollResultsBody"></div>
+    </div>
+
     <!-- Список игроков -->
     <div class="card">
       <div class="card-title">👥 Участники</div>
@@ -469,16 +588,6 @@
   <!-- Правая колонка — управление -->
   <div>
 
-    <!-- QR-код для входа -->
-    <div class="card">
-      <div class="card-title">🔗 Вход для агентов</div>
-      <input type="text" id="linkInput" placeholder="Вставьте ссылку на index.html" oninput="renderQR()">
-      <div id="qrWrap" style="display:none; text-align:center; margin-top:12px;">
-        <img id="qrImg" style="width:180px;height:180px;border-radius:12px;border:3px solid var(--border);background:#fff;padding:8px" />
-        <div style="font-size:11px;color:var(--muted);margin-top:8px">Отсканируйте камерой телефона</div>
-      </div>
-    </div>
-
     <!-- Пассажиры -->
     <div class="card">
       <div class="card-title">👤 Показать пассажира</div>
@@ -488,16 +597,27 @@
       <div class="client-grid" id="clientButtonsReserve" style="display:none"></div>
     </div>
 
-    <!-- Засады -->
-    <div class="card">
-      <div class="card-title">⚠️ Запустить засаду</div>
-      <div id="trapButtons"></div>
-      <hr class="divider">
-      <button class="trap-btn" onclick="launchFinalTrap()">
-        <span class="trap-num">12</span>
-        Финальная засада — Исчезновение
-      </button>
+    <!-- Следующая засада — основной способ вести встречу -->
+    <div class="card" id="nextTrapCard" style="display:none">
+      <div class="card-title">▶ Следующая засада</div>
+      <button class="btn-next" id="nextTrapBtn" onclick="launchNextTrap()"></button>
     </div>
+
+    <!-- Засады вручную -->
+    <div class="card">
+      <div class="card-title" style="cursor:pointer" onclick="toggleManualTraps()">
+        🔧 Выбрать засаду вручную <span id="manualTrapsArrow">▸</span>
+      </div>
+      <div id="manualTrapsBody" style="display:none">
+        <div id="trapButtons"></div>
+        <hr class="divider">
+        <button class="trap-btn" onclick="launchFinalTrap()">
+          <span class="trap-num">12</span>
+          Финальная засада — Исчезновение
+        </button>
+      </div>
+    </div>
+
 
     <!-- Случайные события -->
     <div class="card">
@@ -511,6 +631,7 @@
       <button class="btn btn-dark" onclick="showResults()">📊 Показать результаты участникам</button>
       <button class="btn btn-amber" onclick="showRace()">🏎️ Показать гонку</button>
       <button class="btn btn-purple" onclick="showFinalResults()">🏆 Финал — подвести итоги</button>
+      <button class="btn btn-dark" onclick="launchPoll()">📋 Опрос: что было сложнее?</button>
       <button class="btn btn-dark" onclick="setWaiting()">⏸️ Вернуть в ожидание</button>
       <hr class="divider">
       <button class="btn btn-red" onclick="resetGame()">🔄 Начать заново</button>
@@ -518,7 +639,10 @@
 
   </div>
 
+
 </div>
+
+</div><!-- /dashboardScreen -->
 
 <script src="config.js"></script>
 <script src="questions.js"></script>
@@ -618,6 +742,43 @@ function stopHostTimer() {
 let currentPlayers = [];
 let currentQuestionId = null;
 let currentClientId = null;
+let currentTrapIndex = 0;
+
+function toggleManualTraps() {
+  const body = document.getElementById("manualTrapsBody");
+  const arrow = document.getElementById("manualTrapsArrow");
+  const showing = body.style.display !== "none";
+  body.style.display = showing ? "none" : "block";
+  arrow.textContent = showing ? "▸" : "▾";
+}
+
+function updateNextTrapPreview() {
+  const card = document.getElementById("nextTrapCard");
+  const btn = document.getElementById("nextTrapBtn");
+  const client = GAME_DATA.clients.find(c => c.id === currentClientId);
+
+  if (!client) { card.style.display = "none"; return; }
+
+  if (currentTrapIndex < client.traps.length) {
+    const trap = client.traps[currentTrapIndex];
+    card.style.display = "block";
+    btn.innerHTML = `${client.emoji} ${trap.stage} — «${trap.subtitle}»<small>Нажмите, чтобы запустить у всех участников</small>`;
+    btn.disabled = false;
+  } else {
+    card.style.display = "block";
+    btn.innerHTML = `✅ У ${client.name} засады закончились<small>Выберите следующего клиента слева</small>`;
+    btn.disabled = true;
+  }
+}
+
+async function launchNextTrap() {
+  const client = GAME_DATA.clients.find(c => c.id === currentClientId);
+  if (!client || currentTrapIndex >= client.traps.length) return;
+  const trap = client.traps[currentTrapIndex];
+  currentTrapIndex++;
+  await launchTrap(trap.id, client.id);
+  updateNextTrapPreview();
+}
 
 // ── Строим кнопки из данных ───────────────────────────────────
 
@@ -693,11 +854,13 @@ async function launchClient(clientId, clientName) {
   document.querySelectorAll(".client-btn").forEach(b => b.classList.remove("active"));
   document.getElementById("clientBtn_" + clientId)?.classList.add("active");
   currentClientId = clientId;
+  currentTrapIndex = 0;
   stopHostTimer();
   document.getElementById("currentQuestionCard").style.display = "none";
   document.getElementById("answersCard").style.display = "none";
   SFX.engineStart();
   await api({ action: "startPassenger", clientId, clientName });
+  updateNextTrapPreview();
 }
 
 async function launchTrap(trapId, clientId) {
@@ -706,6 +869,12 @@ async function launchTrap(trapId, clientId) {
 
   const client = GAME_DATA.clients.find(c => c.id === currentClientId);
   const trap = client?.traps.find(t => t.id === trapId);
+
+  // Синхронизируем индекс "Далее" на случай запуска засады вручную
+  if (client) {
+    const idx = client.traps.findIndex(t => t.id === trapId);
+    if (idx !== -1) currentTrapIndex = idx + 1;
+  }
 
   await api({
     action: "startQuestion",
@@ -724,6 +893,7 @@ async function launchTrap(trapId, clientId) {
   renderAnswerStats(trapId, currentClientId);
   SFX.blip();
   startHostTimer(45);
+  updateNextTrapPreview();
 }
 
 async function launchFinalTrap() {
@@ -808,7 +978,100 @@ async function setWaiting() {
 async function showFinalResults() {
   stopHostTimer();
   SFX.fanfare();
+  document.getElementById("pollResultsCard").style.display = "none";
+  document.getElementById("currentQuestionCard").style.display = "none";
+  document.getElementById("answersCard").style.display = "none";
   await api({ action: "showFinalResults" });
+  renderReport(currentPlayers);
+}
+
+function renderReport(players) {
+  const card = document.getElementById("reportCard");
+  const body = document.getElementById("reportBody");
+  if (!players.length) { card.style.display = "none"; return; }
+
+  const totals = { fast: 0, traffic: 0, crash: 0 };
+  players.forEach(p => {
+    totals.fast += p.fastCount || 0;
+    totals.traffic += p.trafficCount || 0;
+    totals.crash += p.crashCount || 0;
+  });
+  const sum = totals.fast + totals.traffic + totals.crash || 1;
+
+  const bestValue = players.slice().sort((a,b) => (b.fastCount||0) - (a.fastCount||0))[0];
+  const mostDiscounts = players.slice().sort((a,b) => (b.trafficCount||0) - (a.trafficCount||0))[0];
+
+  body.innerHTML = `
+    <div style="margin-bottom:16px">
+      ${renderBar("🛡️ Отработка ценности", totals.fast, sum, "var(--green)")}
+      ${renderBar("💰 Уступки / скидки", totals.traffic, sum, "var(--amber)")}
+      ${renderBar("💥 Слив / молчание", totals.crash, sum, "var(--red)")}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${bestValue && bestValue.fastCount > 0 ? `<div class="stat-row-host">🏅 <b>Мастер ценности:</b> ${bestValue.name} (${bestValue.fastCount} раз отработал по-настоящему)</div>` : ""}
+      ${mostDiscounts && mostDiscounts.trafficCount > 0 ? `<div class="stat-row-host">💸 <b>Король уступок:</b> ${mostDiscounts.name} (${mostDiscounts.trafficCount} раз спасал скидкой)</div>` : ""}
+    </div>
+  `;
+  card.style.display = "block";
+}
+
+function renderBar(label, value, total, color) {
+  const pct = Math.round((value / total) * 100);
+  return `
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+        <span>${label}</span><span style="color:var(--muted)">${pct}%</span>
+      </div>
+      <div style="height:10px;background:#0d0f14;border-radius:10px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${color};border-radius:10px"></div>
+      </div>
+    </div>
+  `;
+}
+
+// ── Опрос с обратной связью ─────────────────────────────────────
+const POLL_QUESTION = "Какое возражение было сложнее всего отработать?";
+const POLL_OPTIONS = ["💰 Дорого / деньги", "📅 Расписание", "🤔 Доверие — «это не развод?»", "🤐 Молчание клиента"];
+
+async function launchPoll() {
+  document.getElementById("reportCard").style.display = "none";
+  document.getElementById("currentQuestionCard").style.display = "none";
+  document.getElementById("answersCard").style.display = "none";
+  stopHostTimer();
+  SFX.event();
+  await api({ action: "startPoll", pollQuestion: POLL_QUESTION, pollOptions: POLL_OPTIONS });
+  document.getElementById("pollResultsQuestion").textContent = POLL_QUESTION;
+  document.getElementById("pollResultsCard").style.display = "block";
+  loadPollVotes();
+}
+
+async function loadPollVotes() {
+  if (document.getElementById("pollResultsCard").style.display === "none") return;
+  try {
+    const res = await fetch(API_URL + "?action=pollVotes");
+    const votes = await res.json();
+    renderPollResults(votes);
+  } catch(e) {}
+}
+
+function renderPollResults(votes) {
+  const body = document.getElementById("pollResultsBody");
+  const counts = POLL_OPTIONS.map((_, i) => votes.filter(v => v.choice === i).length);
+  const total = votes.length || 1;
+
+  body.innerHTML = POLL_OPTIONS.map((opt, i) => {
+    const pct = Math.round((counts[i] / total) * 100);
+    return `
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+          <span>${opt}</span><span style="color:var(--muted)">${counts[i]} · ${pct}%</span>
+        </div>
+        <div style="height:10px;background:#0d0f14;border-radius:10px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:var(--purple);border-radius:10px"></div>
+        </div>
+      </div>
+    `;
+  }).join("") + `<div style="color:var(--muted);font-size:12px;margin-top:6px">Проголосовали: ${votes.length}</div>`;
 }
 
 async function resetGame() {
@@ -887,9 +1150,29 @@ function renderRace(players) {
   }).join("");
 }
 
+function goToDashboard() {
+  document.getElementById("lobbyScreen").style.display = "none";
+  document.getElementById("dashboardScreen").style.display = "block";
+}
+function backToLobby() {
+  document.getElementById("dashboardScreen").style.display = "none";
+  document.getElementById("lobbyScreen").style.display = "flex";
+}
+
+function renderLobbyPlayers(players) {
+  document.getElementById("lobbyCount").textContent = players.length;
+  const chips = document.getElementById("lobbyPlayerChips");
+  if (!players.length) {
+    chips.innerHTML = `<div style="color:var(--muted);font-size:14px">Ожидаем участников...</div>`;
+    return;
+  }
+  chips.innerHTML = players.map(p => `<div class="lobby-chip">${p.car} ${p.name}</div>`).join("");
+}
+
 // ── Рендер игроков ────────────────────────────────────────────
 
 function renderPlayers(players) {
+  renderLobbyPlayers(players);
   const list = document.getElementById("playersList");
   if (!players.length) {
     list.innerHTML = `<div style="color:var(--muted);font-size:14px">Ожидаем участников...</div>`;
@@ -940,6 +1223,7 @@ async function loadPlayers() {
 buildUI();
 loadPlayers();
 setInterval(loadPlayers, 2500);
+setInterval(loadPollVotes, 2500);
 
 </script>
 </body>
